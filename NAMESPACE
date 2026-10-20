@@ -1,0 +1,92 @@
+useDynLib(svdx, .registration=TRUE)
+importFrom(Rcpp, evalCpp)
+exportPattern("^[[:alpha:]]")
+importFrom(RcppParallel,RcppParallelLibs)
+
+S3method(predict, SSANOVASVD)
+S3method(predict, iSSANOVASVD)
+
+S3method(plotU,SSANOVASVD)
+S3method(plotU,iSSANOVASVD)
+export(plotU)
+
+S3method(plotUTerms,SSANOVASVD)
+S3method(plotUTerms,iSSANOVASVD)
+export(plotUTerms)
+
+S3method(plotUEmbedding,SSANOVASVD)
+S3method(plotUEmbedding,iSSANOVASVD)
+export(plotUEmbedding)
+
+S3method(inferV,SSANOVASVD)
+S3method(inferV,iSSANOVASVD)
+export(inferV)
+
+S3method(getLRA, SSANOVASVD)
+S3method(getLRA, iSSANOVASVD)
+
+S3method(summary, SSANOVASVD)
+S3method(summary, iSSANOVASVD) #TO IMPLEMENT
+
+S3method(print,summary.SSANOVASVD)
+S3method(print,summary.iSSANOVASVD)
+
+S3method(summary,svdxInference)
+S3method(summary,svdxWorkflow)
+S3method(plot,svdxWorkflow)
+S3method(print,summary.svdxWorkflow)
+
+S3method(summary,isvdxInference)
+
+
+export(topFeatures)
+export(svdxSignificant)
+export(svdxUniverse)
+export(asRankedList)
+export(runISVDXWorkflow)
+export(subset_isvdx_inputs)
+
+S3method(summary,isvdxWorkflow)
+S3method(print,summary.isvdxWorkflow)
+S3method(plot,isvdxWorkflow)
+
+
+S3method(topFeatures,svdxInference)
+S3method(topFeatures,svdxWorkflow)
+
+S3method(svdxSignificant,svdxInference)
+S3method(svdxSignificant,svdxWorkflow)
+
+S3method(svdxUniverse,svdxInference)
+S3method(svdxUniverse,svdxWorkflow)
+
+S3method(asRankedList,svdxInference)
+S3method(asRankedList,svdxWorkflow)
+
+S3method(topFeatures,isvdxInference)
+S3method(svdxSignificant,isvdxInference)
+S3method(svdxUniverse,isvdxInference)
+S3method(asRankedList,isvdxInference)
+
+
+S3method(topFeatures,isvdxWorkflow)
+S3method(svdxSignificant,isvdxWorkflow)
+S3method(svdxUniverse,isvdxWorkflow)
+S3method(asRankedList,isvdxWorkflow)
+
+S3method(enrichPathways,svdxInference)
+S3method(enrichPathways,svdxWorkflow)
+S3method(enrichPathways,isvdxInference)
+S3method(enrichPathways,isvdxWorkflow)
+export(enrichPathways)
+
+export(svdx)
+export(isvdx)
+export(runSVDXWorkflow)
+export(runISVDXWorkflow)
+export(runSVDXReport)
+export(runISVDXReport)
+
+
+
+

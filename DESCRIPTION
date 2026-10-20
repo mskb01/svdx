@@ -1,0 +1,46 @@
+Package: svdx
+Type: Package
+Title: Smoothing Spline ANOVA-Singular Value Decomposition
+Version: 1.0.0
+Authors@R: person(
+    given = "M. Senthil",
+    family = "Kumar",
+    role = c("aut", "cre"),
+    email = "senthil@ds.dfci.harvard.edu"
+    )
+Description: Implements Smoothing Spline Analysis of Variance-Singular Value
+    Decomposition (SSANOVA-SVD) for system-level modeling of high-dimensional
+    data. The method reconstructs overarching processes as smooth functions
+    of observed covariates and estimates feature loadings describing their
+    contributions to the measurements. The fitted models support prediction
+    of processes in new observations and subsequent conditional inference
+    of feature participation.
+License: GPL (>= 2)
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    stats,
+    utils,
+    methods,
+    Matrix,
+    Rcpp,
+    RcppEigen,
+    dplyr,
+    tibble,
+    ggplot2,
+    RcppParallel
+Suggests:
+    limma,
+    fgsea,
+    clusterProfiler,
+    msigdbr,
+    pROC,
+    tidyr,
+    patchwork
+LinkingTo:
+    Rcpp,
+    RcppParallel,
+    RcppArmadillo
+SystemRequirements: GNU make, C++ compiler, NLopt library
+Config/roxygen2/version: 8.1.0
+NeedsCompilation: yes

@@ -1,0 +1,2 @@
+PKG_CPPFLAGS = -I/opt/homebrew/opt/nlopt/include
+PKG_LIBS = -L/opt/homebrew/opt/nlopt/lib -lnlopt $(shell "${R_HOME}/bin/Rscript" -e "RcppParallel::RcppParallelLibs()") $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

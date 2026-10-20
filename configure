@@ -1,0 +1,17 @@
+#!/bin/sh
+
+NLOPT_CPPFLAGS=`pkg-config --cflags nlopt 2>/dev/null`
+NLOPT_LIBS=`pkg-config --libs nlopt 2>/dev/null`
+
+if [ -z "$NLOPT_LIBS" ]; then
+  echo "ERROR: nlopt not found. Install nlopt first."
+  echo "macOS: brew install nlopt"
+  echo "Ubuntu/Debian: sudo apt-get install libnlopt-dev"
+  exit 1
+fi
+
+sed \
+  -e "s|@NLOPT_CPPFLAGS@|$NLOPT_CPPFLAGS|g" \
+  -e "s|@NLOPT_LIBS@|$NLOPT_LIBS|g" \
+  src/Makevars.in > src/Makevars
+  

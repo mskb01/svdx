@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ -z "$NLOPT_HOME" ]; then
+  echo "ERROR: NLOPT_HOME is not set."
+  echo 'Set it in R, e.g. Sys.setenv(NLOPT_HOME = "C:/nlopt")'
+  exit 1
+fi
+
+NLOPT_CPPFLAGS="-I${NLOPT_HOME}/include"
+NLOPT_LIBS="-L${NLOPT_HOME}/lib -lnlopt"
+
+sed \
+  -e "s|@NLOPT_CPPFLAGS@|$NLOPT_CPPFLAGS|g" \
+  -e "s|@NLOPT_LIBS@|$NLOPT_LIBS|g" \
+  src/Makevars.win.in > src/Makevars.win
+  

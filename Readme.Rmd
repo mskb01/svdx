@@ -1,0 +1,212 @@
+---
+title: "svdx"
+output: github_document
+---
+
+# svdx
+The package implements **Smoothing Spline Analysis of Variance–Singular Value Decomposition** (SSANOVA-SVD) for system-level modeling of high-dimensional data. It reconstructs overarching processes as smooth functions of observed covariates and estimates feature loadings describing their contributions to the measurements.
+
+The resulting system-level models can be used within the three-step analytical framework encompassing process reconstruction, out-of-sample prediction, and conditional inference of feature participation. The example below illustrates these steps.
+
+This README focuses on the **single-dataset svdx()** interface. Documentation for other methods implemented in the package will accompany forthcoming manuscripts.
+
+## Requirements
+
+- R (>= 4.1.0) and a working C++ toolchain for compiling R packages.
+- [NLopt](https://nlopt.readthedocs.io/) installed as a system library and discoverable with `pkg-config`.
+- R package dependencies declared in `DESCRIPTION`, including `Rcpp`, `RcppArmadillo`, and `RcppParallel`.
+
+The package uses TBB for parallel computation. The build links against the TBB libraries provided by **RcppParallel**; a separate Homebrew TBB installation is not expected to be necessary on macOS. This configuration has been inspected on Apple Silicon macOS; other platforms have not yet been verified.
+
+### macOS (Homebrew)
+
+Install NLopt and `pkg-config`:
+
+```sh
+brew install nlopt pkg-config
+```
+
+Then, in R:
+
+```r
+install.packages(c("Rcpp", "RcppArmadillo", "RcppParallel", "remotes"))
+remotes::install_github("mskb01/svdx", dependencies = TRUE)
+library(svdx)
+```
+
+Replace `mskb01/svdx` with the repository location once published.
+
+### Ubuntu/Debian
+
+Install the NLopt development headers, `pkg-config`, and the tools needed to compile R packages:
+
+```sh
+sudo apt-get update
+sudo apt-get install libnlopt-dev pkg-config build-essential
+```
+
+Then install the R dependencies and package as above. Linux installation has not yet been tested for this release.
+
+**Note:** The package's `configure` script uses `pkg-config` to locate NLopt. If NLopt is installed in a nonstandard location, configure `PKG_CONFIG_PATH` before installation. The package has not been built or tested on Windows.
+
+## Model
+
+For a feature-by-sample matrix $Y \in \mathbb{R}^{p \times n}$, the model represents the measurements using a low-rank component and optional adjustment effects:
+
+$$
+Y \approx VU^\top + Z\zeta,
+$$
+
+where $U \in \mathbb{R}^{n \times K}$ contains sample-level processes modeled as smooth functions of study covariates, and $V \in \mathbb{R}^{p \times K}$ contains feature loadings. Optional nuisance covariates are specified separately.
+
+## Basic usage
+
+The following illustrates the **non-family (Gaussian) `svdx()` interface**. `Y` must have features in rows and samples in columns; `data` must have one row per sample, in the same order as the columns of `Y`.
+
+
+```r
+library(svdx)
+library(tidyr)
+library(ggplot2)
+library(patchwork)
+library(limma)
+
+#Generate data 
+set.seed(1)
+n <- 100
+p <- 500
+sample_data <- data.frame(
+  time = rep(seq(0, 1, length.out = n/2),2),
+  group = factor(rep(c("A", "B"), each = n/2))
+)
+
+Y0 <- matrix(rnorm(p * n), nrow = p, ncol = n) 
+tprof <- cos(sample_data$time*2*pi)
+Yt <- 0*Y0
+Yt[ 1:4, ] <- do.call(rbind, lapply(seq(4), function(x) tprof) )
+signs <- c(1,-1,1,-1)
+Yt[1:4,] <- sweep( Yt[1:4,], 1, signs, "*" )
+
+mu <- c(-1, 2)
+b <- c(model.matrix( ~sample_data$group ) %*% mu)
+Yb <- 0*Y0
+scales <- c(1, .25, .25, 1)
+Yb[5:8,] <- do.call( rbind, lapply( seq(4), function(x) c(b)*scales[x] ) )
+cbio <- 2
+Y <- Y0 + cbio*(Yt + Yb)
+
+rownames(Y) <- paste0("feature_", seq_len(p))
+colnames(Y) <- paste0("sample_", seq_len(n))
+rownames(sample_data) <- colnames(Y)
+
+# Data split 
+train <- sample( n, .7*n )
+test <- seq(n)[-train]
+Ytrain <- Y[,train]
+sample_data_train <- sample_data[train,]
+Ytest <- Y[,test]
+sample_data_test <- sample_data[test,]
+
+#Step 1: Fit ssanova-svd for the train data
+fit <- svdx(
+  Y = Ytrain,
+  K = 3,
+  formula = ~ group + time,
+  data = sample_data_train,
+  zformula = ~ 1,
+  zdata = sample_data_train,
+  modelType = list(time = list("cubic", range(sample_data$time))), #range should be specified 
+  family = NULL,
+  est_K = TRUE,
+  numThreads = 2
+)
+
+#Visualize and interpret
+g1 <- data.frame( sample_data, groupEffect=cbio*b, timeEffect=cbio*tprof ) |> 
+  tidyr::pivot_longer( cols = c(groupEffect, timeEffect) ) |> 
+  ggplot( aes( x= time, y=value, group = group, color=group) ) + 
+  geom_point() +
+  geom_line() +
+  facet_wrap(~name) + theme_bw()
+  
+c1 <-plotU(fit, data = sample_data, component = 1, x = "time", group="group")
+c2 <- plotU(fit, data = sample_data, component = 2, x = "time", group="group") 
+g1/(c1+c2)
+
+#Step 2: predict processes in external data without using their measurements
+pred <- predict( fit, newdata = sample_data_test  ) 
+
+#Step 3: conditional inference using unused measurements
+design <- model.matrix( ~pred ) 
+lmfit <- lmFit( Ytest, design)
+eb <- eBayes(lmfit)
+which(p.adjust(eb$p.value[,2], "BH") < .1) #features participating in the first process
+which(p.adjust(eb$p.value[,3], "BH") < .1) #features participating in the second process
+#omnibus F tests can also be made using the limma interface 
+```
+
+### Core arguments
+
+| Argument | Purpose |
+| --- | --- |
+| `Y` | Numeric feature-by-sample matrix. |
+| `K` | Maximum number of components to fit. |
+| `formula`, `data` | Study covariates used to model component functions. |
+| `zformula`, `zdata` | Optional nuisance/adjustment covariates. |
+| `modelType` | Basis/model specification for covariates, where needed. |
+| `family` | `NULL` for the non-family Gaussian workflow documented here. |
+| `est_K` | Whether to estimate the number of components. |
+| `nfolds` | Number of cross-validation folds (default: 5). |
+| `numThreads` | Number of parallel worker threads. |
+| `fitter_control`, `optCV_control`, `nlopt_control` | Optional numerical optimization controls. |
+
+See `?svdx` for the full argument list, including offsets, basis selection, and graph-related options.
+
+## Fitted components and prediction
+
+The returned object has class `SSANOVASVD`. Its fitted results include component scores, feature loadings, and adjustment estimates. For the current result structure, these are available under `fit$fitAtOptCV`:
+
+```r
+U <- fit$fitAtOptCV$umat
+V <- fit$fitAtOptCV$vmat
+```
+
+Sample-level process functions can be evaluated at covariate values using the package's prediction method:
+
+```r
+pred <- predict(fit, newdata = sample_data_train)
+```
+
+The same interface can be used to decompose each component in terms of covariate contributions
+```r
+pred_group <- predict(fit, newdata = sample_data_train, include="group")
+pred_time <- predict(fit, newdata = sample_data_train, include="time")
+```
+
+For usage and available prediction options, see `?predict.SSANOVASVD`.
+
+## Documentation and reproducibility
+
+```r
+?svdx
+?predict.SSANOVASVD
+```
+
+Analysis scripts reproducing the manuscript's simulations and applications will be provided separately in `svdxAnalysis`.
+
+## Troubleshooting and numerical warnings
+
+**NLopt round-off errors.** On rare occasions, NLopt may terminate with a
+round-off error due to numerical limitations. If this occurs, relaxing the
+optimization tolerances (i.e., using less stringent convergence criteria `ftol_abs`, 
+`xtol_abs`) may resolve the issue.
+
+**Convergence warnings during hyperparameter optimization.** During
+hyperparameter optimization, convergence warnings may occasionally be
+reported for candidate hyperparameter settings. These warnings can
+generally be ignored, provided the overall optimization completes
+successfully.
+
+## Citation
+
+Citation details for the accompanying manuscript will be added upon publication.
